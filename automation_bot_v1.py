@@ -1,3 +1,4 @@
+# ////////////////////Data Scrap from Pulse Website using from inputs ////////////
 import csv
 import logging
 import time
