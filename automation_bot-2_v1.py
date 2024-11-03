@@ -24,7 +24,7 @@ options.add_argument('--disable-dev-shm-usage')
 driver = webdriver.Chrome(options=options)
 
 # Step 1: Read URLs from urls.csv
-url_file = 'urls.csv'
+url_file = 'main_urls.csv'
 urls = pd.read_csv(url_file)
 
 # Prepare a list to hold the data
