@@ -27,7 +27,7 @@ headers = {
 # Inputs
 tehsil_id = "87"  # Example Tehsil ID
 party_name = "عبدالغفور"  # Example party name
-spouse_name = "اللہ داد"  # Example spouse name
+spouse_name = "اللہ داد"  # Example spouse name 
 
 # Function to fetch data without limit
 def fetch_data(tehsil_id, party_name, spouse_name):
