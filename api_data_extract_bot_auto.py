@@ -26,28 +26,37 @@ headers = {
 
 # Inputs
 tehsil_id = "87"  # Example Tehsil ID
-party_name = "عبدالغفور"  # Example party name
-spouse_name = "اللہ داد"  # Example spouse name 
+party_name = "عبد الحمید"  # Example party name
+spouse_name = "گورنر پاکستان"  # Example spouse name 
+address = ""  # Example address
 
 # Function to fetch data without limit
-def fetch_data(tehsil_id, party_name, spouse_name):
+def fetch_data(tehsil_id, party_name, spouse_name, address):
+    must_conditions = [
+        {"term": {"TehsilId": {"value": tehsil_id}}},
+        {
+            "nested": {
+                "path": "RegistryParties",
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"match_phrase": {"RegistryParties.Name": party_name}},
+                            {"match_phrase": {"RegistryParties.SpouseName": spouse_name}}
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+
+    # Only add address to the query if it is not empty
+    if address:
+        must_conditions.append({"match": {"Address": address}})  # Using match instead of match_phrase
+
     searchQuery = {
         "query": {
             "bool": {
-                "must": [
-                    {"term": {"TehsilId": {"value": tehsil_id}}},
-                    {"nested": {
-                        "path": "RegistryParties",
-                        "query": {
-                            "bool": {
-                                "must": [
-                                    {"match_phrase": {"RegistryParties.Name": party_name}},
-                                    {"match_phrase": {"RegistryParties.SpouseName": spouse_name}}
-                                ]
-                            }
-                        }
-                    }}
-                ]
+                "must": must_conditions
             }
         },
         "_source": [
@@ -159,7 +168,7 @@ def save_grouped_data(filename, grouped_data):
             writer.writerow(row)
 
 # Fetch data without limits
-raw_data, grouped_data = fetch_data(tehsil_id, party_name, spouse_name)
+raw_data, grouped_data = fetch_data(tehsil_id, party_name, spouse_name, address)
 
 # Save raw data to raw_data.csv
 raw_csv_filename = "raw_data.csv"
