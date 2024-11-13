@@ -156,6 +156,6 @@ if __name__ == "__main__":
     scraper.run(
         url="https://rod.pulse.gop.pk/index.html",
         district='ملتان',
-        tehsil='87',
-        editor_name='برخوردار'
+        tehsil='86',
+        editor_name='عبدالرشید'
     )

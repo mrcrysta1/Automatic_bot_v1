@@ -27,7 +27,7 @@ headers = {
 
 # Inputs
 tehsil_id = "86"  # Example Tehsil ID
-property_number = "طرف راوی"  # Example Property Number
+property_number = "محلہ کنگھیاں"  # Example Property Number
 
 # Function to fetch data without limit
 def fetch_data(tehsil_id, property_number):

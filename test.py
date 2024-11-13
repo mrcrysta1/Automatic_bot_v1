@@ -26,41 +26,30 @@ headers = {
 
 # Inputs
 tehsil_id = "86"  # Example Tehsil ID
-party_name = ""  # Example party name
-spouse_name = ""  # Example spouse name 
-address = ""  # Example address
+party_name = "عبدالرؤف"  # Example party name
+spouse_name = "اللہ داد"  # Example spouse name
+address = "بیرون بوہر گیٹ"  # Example address
 second_party_name = ""  # Optional second party name
 second_spouse_name = ""  # Optional second spouse name
-RegistryDate = "2015-04-23"
-Cnic = ""
-# Function to fetch data without limit
-def fetch_data(tehsil_id, party_name, spouse_name, address, second_party_name, second_spouse_name , RegistryDate, Cnic):
+
+# Function to fetch data from Elasticsearch
+def fetch_data(tehsil_id, party_name, spouse_name, address, second_party_name, second_spouse_name):
     must_conditions = [
-        {"term": {"TehsilId": {"value": tehsil_id}}}
+        {"term": {"TehsilId": {"value": tehsil_id}}},
+        {
+            "nested": {
+                "path": "RegistryParties",
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"match_phrase": {"RegistryParties.Name": party_name}},
+                            {"match_phrase": {"RegistryParties.SpouseName": spouse_name}}
+                        ]
+                    }
+                }
+            }
+        }
     ]
-    
-    if party_name:
-        must_conditions.append({
-            "nested": {
-                "path": "RegistryParties",
-                "query": {
-                    "bool": {
-                        "must": [{"match_phrase": {"RegistryParties.Name": party_name}}]
-                    }
-                }
-            }
-        })
-    if Cnic:
-        must_conditions.append({
-            "nested": {
-                "path": "RegistryParties",
-                "query": {
-                    "bool": {
-                        "must": [{"match_phrase": {"RegistryParties.Cnic": Cnic}}]
-                    }
-                }
-            }
-        })
 
     # Only add second party conditions if the second party name and spouse name are provided
     if second_party_name and second_spouse_name:
@@ -77,18 +66,10 @@ def fetch_data(tehsil_id, party_name, spouse_name, address, second_party_name, s
                 }
             }
         })
-    # Add spouse name condition if it is provided
-    if spouse_name:
-        must_conditions[1]["nested"]["query"]["bool"]["must"].append(
-            {"match_phrase": {"RegistryParties.SpouseName": spouse_name}}
-        )
 
     # Only add address to the query if it is not empty
     if address:
-        must_conditions.append({"match": {"PropertyNumber": address}})
-   # Only add Registry Date to the query if it is not empty
-    if RegistryDate:
-        must_conditions.append({"match": {"RegistryDate": RegistryDate}})
+        must_conditions.append({"match": {"Address": address}})  # Using match instead of match_phrase
 
     searchQuery = {
         "query": {
@@ -99,13 +80,13 @@ def fetch_data(tehsil_id, party_name, spouse_name, address, second_party_name, s
         "_source": [
             "Id", "UserId", "VendorId", "UserWorkQueMasterId", "RegisteredNumber", 
             "JildNumber", "PropertyNumber", "IsApproved", "IsJildCompleted", 
-            "BahiNumber", "RegistryType" , "RegistryDate", "IsActive", "CreatedDate", 
+            "BahiNumber", "RegistryDate", "IsActive", "CreatedDate", 
             "ModifiedDate", "CreatedBy", "ModifiedBy", "TehsilId", "MauzaId", 
-             "IsExported", "Area", "RegistryValue", 
+            "Address", "IsExported", "Area", "RegistryValue", 
             "RegistryExportImg", "RegistryType", "MauzaName", 
             "RegistryParties"
         ],
-        "size": 10000
+        "size": 10000  # Large fetch size; Elasticsearch may limit based on server settings
     }
     
     # Send the POST request
@@ -130,7 +111,6 @@ def fetch_data(tehsil_id, party_name, spouse_name, address, second_party_name, s
                         "Registry ID": registry_id,
                         "Registered Number": source.get("RegisteredNumber"),
                         "Mauza Name": source.get("MauzaName"),
-                        "Registry Type": source.get("RegistryType"),
                         "Registry Date": source.get("RegistryDate"),
                         "Property Number": source.get("PropertyNumber"),
                         f"Party {i} Name": party.get("Name"),
@@ -145,7 +125,6 @@ def fetch_data(tehsil_id, party_name, spouse_name, address, second_party_name, s
         print(response.text)
         return [], {}
 
-
 # Function to save raw data to a CSV file
 def save_raw_data(filename, raw_data):
     if not raw_data:
@@ -156,7 +135,7 @@ def save_raw_data(filename, raw_data):
     fieldnames = ["Id", "UserId", "VendorId", "UserWorkQueMasterId", 
                   "RegisteredNumber", "JildNumber", "PropertyNumber", 
                   "IsApproved", "IsJildCompleted", "BahiNumber", 
-                  "RegistryDate", "PartyType" , "IsActive", "CreatedDate", 
+                  "RegistryDate", "IsActive", "CreatedDate", 
                   "ModifiedDate", "CreatedBy", "ModifiedBy", 
                   "TehsilId", "MauzaId", "Address", 
                   "IsExported", "Area", "RegistryValue", 
@@ -179,7 +158,7 @@ def save_grouped_data(filename, grouped_data):
 
     # Determine all column headers based on the maximum number of parties in any registry
     max_parties = max(len(party_list) for party_list in grouped_data.values())
-    fieldnames = ["Registry ID", "Registered Number", "Mauza Name", "Registry Date", "Property Number" , "Registry Type"]
+    fieldnames = ["Registry ID", "Registered Number", "Mauza Name", "Registry Date", "Property Number"]
     for i in range(1, max_parties + 1):
         fieldnames.extend([f"Party {i} Name", f"Party {i} Spouse Name", f"Party {i} CNIC", f"Party {i} Type ID"])
     
@@ -195,8 +174,6 @@ def save_grouped_data(filename, grouped_data):
                 "Mauza Name": party_list[0].get("Mauza Name"),
                 "Registry Date": party_list[0].get("Registry Date"),
                 "Property Number": party_list[0].get("Property Number"),
-                "Registry Type": party_list[0].get("Registry Type"),
-
             })
             
             # Populate each party's data in the row
@@ -205,12 +182,11 @@ def save_grouped_data(filename, grouped_data):
                 row[f"Party {i} Spouse Name"] = party_data.get(f"Party {i} Spouse Name")
                 row[f"Party {i} CNIC"] = party_data.get(f"Party {i} CNIC")
                 row[f"Party {i} Type ID"] = party_data.get(f"Party {i} Type ID")
-                
             
             writer.writerow(row)
 
 # Fetch data without limits
-raw_data, grouped_data = fetch_data(tehsil_id, party_name, spouse_name, address, second_party_name, second_spouse_name, RegistryDate, Cnic)
+raw_data, grouped_data = fetch_data(tehsil_id, party_name, spouse_name, address, second_party_name, second_spouse_name)
 
 # Save raw data to raw_data.csv
 raw_csv_filename = "raw_data.csv"

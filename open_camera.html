@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Check</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        video {
+            border: 2px solid #000;
+            margin-top: 20px;
+        }
+        #status {
+            font-size: 18px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Check Camera Status</h1>
+    <button onclick="startCamera()">Start Camera</button>
+    <video id="cameraFeed" width="640" height="480" autoplay></video>
+    <div id="status"></div>
+
+    <script>
+        let cameraFeed = document.getElementById('cameraFeed');
+        let statusDiv = document.getElementById('status');
+        let cameraStream = null;
+
+        // Start the camera
+        function startCamera() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                // Request video from the user's camera
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function (stream) {
+                        cameraStream = stream;
+                        cameraFeed.srcObject = stream;
+                        statusDiv.innerHTML = 'Camera is open!';
+                    })
+                    .catch(function (err) {
+                        statusDiv.innerHTML = 'Error: ' + err.message;
+                    });
+            } else {
+                statusDiv.innerHTML = 'Camera not supported in this browser.';
+            }
+        }
+
+        // Optional: Close the camera when user navigates away
+        window.onbeforeunload = function () {
+            if (cameraStream) {
+                let tracks = cameraStream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+        }
+    </script>
+</body>
+</html>

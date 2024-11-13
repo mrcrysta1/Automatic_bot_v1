@@ -1,7 +1,8 @@
 import csv
 
 # Input and output file paths
-input_file = 'scraped_data.csv'
+input_file = 'registry_data.csv'
+# input_file = 'scraped_data.csv'
 output_file = 'ids.csv'
 
 # Initialize an empty list to store Button IDs
