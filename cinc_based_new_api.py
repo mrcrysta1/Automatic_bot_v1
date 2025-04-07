@@ -13,11 +13,8 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 url = "https://rodb.pulse.gop.pk/registry_index_3/_search"
 
 # Authentication (Base64 encoded)
-# username = "elastic"
-# password = "qZM2ov-qIa=UXr6+Gx8b"
-username = "read_only_user_v2"
-password = "readonly_123"
-
+username = "secure.txt"
+password = "read"
 credentials = f"{username}:{password}"
 auth_header = base64.b64encode(credentials.encode()).decode()
 
@@ -27,18 +24,26 @@ headers = {
     'Authorization': f'Basic {auth_header}'
 }
 
-# Inputs
-tehsil_id = "86"  # Example Tehsil ID
-property_number = "محلہ شانہ"  # Example Property Number
+# Default CNIC
+cnic = "3630225149201"
 
-# Function to fetch data with the Scroll API for large data retrieval
-def fetch_data_with_scroll(tehsil_id, property_number, batch_size=10000, scroll_time="1m"):
+def fetch_data_by_cnic(cnic, batch_size=10000, scroll_time="1m"):
+    # Generate list of Tehsil IDs from 0 to 150 as strings
+    tehsil_ids = [str(i) for i in range(151)]
+    
     searchQuery = {
         "query": {
             "bool": {
                 "must": [
-                    {"term": {"TehsilId": {"value": tehsil_id}}},
-                    {"match_phrase": {"PropertyNumber": property_number}}  # Search by Property Number
+                    {"terms": {"TehsilId": tehsil_ids}},
+                    {
+                        "nested": {
+                            "path": "RegistryParties",
+                            "query": {
+                                "term": {"RegistryParties.CNIC": {"value": cnic}}
+                            }
+                        }
+                    }
                 ]
             }
         },
@@ -71,7 +76,11 @@ def fetch_data_with_scroll(tehsil_id, property_number, batch_size=10000, scroll_
                 "scroll_id": scroll_id
             }
 
-            scroll_response = requests.post("https://rodb.pulse.gop.pk/_search/scroll", headers=headers, data=json.dumps(scroll_query))
+            scroll_response = requests.post(
+                "https://rodb.pulse.gop.pk/_search/scroll",
+                headers=headers,
+                data=json.dumps(scroll_query)
+            )
 
             if scroll_response.status_code == 200:
                 scroll_data = scroll_response.json()
@@ -91,7 +100,7 @@ def fetch_data_with_scroll(tehsil_id, property_number, batch_size=10000, scroll_
             source = hit['_source']
             registry_id = source.get("Id")
             
-            # Process for grouped data
+            # Process each party in RegistryParties
             for i, party in enumerate(source.get("RegistryParties", []), start=1):
                 grouped_data[registry_id].append({
                     "Registry ID": registry_id,
@@ -132,7 +141,8 @@ def save_raw_data(filename, raw_data):
         writer.writeheader()
         
         for entry in raw_data:
-            row = {field: entry.get(field) for field in fieldnames}
+            source = entry['_source']
+            row = {field: source.get(field) for field in fieldnames}
             writer.writerow(row)
 
 # Function to save grouped data to a CSV file
@@ -170,18 +180,18 @@ def save_grouped_data(filename, grouped_data):
             writer.writerow(row)
 
 # Fetch all data with Scroll API
-raw_data, grouped_data = fetch_data_with_scroll(tehsil_id, property_number)
+raw_data, grouped_data = fetch_data_by_cnic(cnic)
 
-# Save raw data to raw_data.csv
-raw_csv_filename = "raw_data.csv"
+# Save raw data to CSV
+raw_csv_filename = f"raw_data_cnic_{cnic}.csv"
 if raw_data:
     save_raw_data(raw_csv_filename, raw_data)
     print(f"Raw data saved to {raw_csv_filename}")
 else:
     print("No raw data was retrieved.")
 
-# Save grouped data to clean_result.csv
-clean_csv_filename = "clean_result.csv"
+# Save grouped data to CSV
+clean_csv_filename = f"clean_result_cnic_{cnic}.csv"
 if grouped_data:
     save_grouped_data(clean_csv_filename, grouped_data)
     print(f"Grouped data saved to {clean_csv_filename}")
