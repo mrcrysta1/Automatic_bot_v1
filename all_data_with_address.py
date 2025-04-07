@@ -15,8 +15,8 @@ url = "https://rodb.pulse.gop.pk/registry_index_3/_search"
 # Authentication (Base64 encoded)
 # username = "elastic"
 # password = "qZM2ov-qIa=UXr6+Gx8b"
-username = "read_only_user_v2"
-password = "readonly_123"
+username = ""
+password = ""
 
 credentials = f"{username}:{password}"
 auth_header = base64.b64encode(credentials.encode()).decode()
